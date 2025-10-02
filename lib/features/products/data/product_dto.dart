@@ -1,0 +1,1 @@
+//mapping <-> Supabase rows

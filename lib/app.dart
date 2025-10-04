@@ -1,16 +1,17 @@
 // MaterialApp + ProviderScope + Router
 
 import 'package:flutter/material.dart';
-import 'core/config/router.dart'; // ✅ ใช้ GoRouter ที่ประกาศไว้
+import 'core/config/router.dart'; // ต้องมีตัวแปร router หรือ appRouter
 
 class MiniMartApp extends StatelessWidget {
   const MiniMartApp({super.key});
+
   @override
   Widget build(BuildContext context) {
-    // เปลี่ยนมาใช้ GoRouter แทน routes map
     return MaterialApp.router(
       title: 'Mini Mart',
-      routerConfig: router,
+      routerConfig:
+          appRouter, // ถ้าไฟล์ router ของคุณใช้ชื่อ appRouter ให้เปลี่ยนตรงนี้
       debugShowCheckedModeBanner: false,
     );
   }

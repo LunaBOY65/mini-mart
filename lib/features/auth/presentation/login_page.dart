@@ -1,78 +1,79 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
+import '../../../core/utils/validators.dart';
+import 'controllers/auth_controller.dart';
 
-class LoginDemoPage extends StatefulWidget {
-  final String? redirect;
-  const LoginDemoPage({super.key, this.redirect});
-
+class LoginPage extends ConsumerStatefulWidget {
+  const LoginPage({super.key});
   @override
-  State<LoginDemoPage> createState() => _LoginDemoPageState();
+  ConsumerState<LoginPage> createState() => _LoginPageState();
 }
 
-class _LoginDemoPageState extends State<LoginDemoPage> {
+class _LoginPageState extends ConsumerState<LoginPage> {
+  final _formKey = GlobalKey<FormState>();
   final _email = TextEditingController();
-  final _pass = TextEditingController();
+  final _password = TextEditingController();
   bool _loading = false;
-
-  Future<void> _login() async {
-    setState(() => _loading = true);
-    try {
-      await Supabase.instance.client.auth.signInWithPassword(
-        email: _email.text.trim(),
-        password: _pass.text,
-      );
-      final target = widget.redirect != null
-          ? Uri.decodeComponent(widget.redirect!)
-          : '/products';
-      if (mounted) context.go(target);
-    } catch (e) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('Login failed: $e')));
-    } finally {
-      if (mounted) setState(() => _loading = false);
-    }
-  }
+  String? _error;
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Login (Demo)')),
+      appBar: AppBar(title: const Text('Login')),
       body: Padding(
         padding: const EdgeInsets.all(16),
-        child: Column(
-          children: [
-            TextField(
-              controller: _email,
-              decoration: const InputDecoration(labelText: 'Email'),
-            ),
-            const SizedBox(height: 8),
-            TextField(
-              controller: _pass,
-              decoration: const InputDecoration(labelText: 'Password'),
-              obscureText: true,
-            ),
-            const SizedBox(height: 16),
-            FilledButton(
-              onPressed: _loading ? null : _login,
-              child: _loading
-                  ? const CircularProgressIndicator()
-                  : const Text('Login'),
-            ),
-            const SizedBox(height: 8),
-            TextButton(
-              onPressed: () => context.go(
-                '/signup?redirect=${Uri.encodeComponent(widget.redirect ?? '/products')}',
+        child: Form(
+          key: _formKey,
+          child: Column(
+            children: [
+              TextFormField(
+                controller: _email,
+                decoration: const InputDecoration(labelText: 'Email'),
+                validator: (v) => Validators.email(v ?? ''),
               ),
-              child: const Text('Create account'),
-            ),
-            TextButton(
-              onPressed: () => context.go('/products'),
-              child: const Text('Continue as guest'),
-            ),
-          ],
+              TextFormField(
+                controller: _password,
+                decoration: const InputDecoration(labelText: 'Password'),
+                obscureText: true,
+                validator: (v) => Validators.password(v ?? ''),
+              ),
+              const SizedBox(height: 12),
+              if (_error != null)
+                Text(_error!, style: const TextStyle(color: Colors.red)),
+              const SizedBox(height: 12),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: _loading
+                      ? null
+                      : () async {
+                          if (!(_formKey.currentState?.validate() ?? false))
+                            return;
+                          setState(() => _loading = true);
+                          _error = null;
+                          try {
+                            await ref
+                                .read(authActionProvider)
+                                .login(_email.text.trim(), _password.text);
+                            if (mounted) context.go('/products');
+                          } catch (e) {
+                            setState(() => _error = e.toString());
+                          } finally {
+                            if (mounted) setState(() => _loading = false);
+                          }
+                        },
+                  child: _loading
+                      ? const CircularProgressIndicator()
+                      : const Text('Login'),
+                ),
+              ),
+              TextButton(
+                onPressed: () => context.go('/signup'),
+                child: const Text('Create account'),
+              ),
+            ],
+          ),
         ),
       ),
     );

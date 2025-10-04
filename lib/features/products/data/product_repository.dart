@@ -1,60 +1,28 @@
-//list/create/update/delete + storage รูป
-
 import 'package:supabase_flutter/supabase_flutter.dart';
-
-class Product {
-  final int? id;
-  final String title;
-  final double price;
-  final String? description;
-  final String? imageUrl;
-  final String ownerId;
-  Product({
-    this.id,
-    required this.title,
-    required this.price,
-    this.description,
-    this.imageUrl,
-    required this.ownerId,
-  });
-
-  factory Product.fromJson(Map<String, dynamic> j) => Product(
-    id: j['id'] as int?,
-    title: j['title'] as String,
-    price: double.parse(j['price'].toString()),
-    description: j['description'] as String?,
-    imageUrl: j['image_url'] as String?,
-    ownerId: j['owner_id'] as String,
-  );
-
-  Map<String, dynamic> toInsert() => {
-    'title': title,
-    'price': price,
-    'description': description,
-    'image_url': imageUrl,
-    'owner_id': ownerId,
-  };
-}
+import '../domain/product.dart'; // ← ใช้โมเดลเดียวจาก domain
 
 class ProductRepository {
-  final supa = Supabase.instance.client;
+  final _db = Supabase.instance.client;
 
-  Future<List<Product>> list() async {
-    final res = await supa
+  Future<List<Product>> listAll() async {
+    final rows = await _db
         .from('products')
-        .select('*')
-        .order('created_at', ascending: false);
-    return (res as List)
-        .map((e) => Product.fromJson(e as Map<String, dynamic>))
-        .toList();
+        // alias: ชื่อที่โค้ดต้องการ : ชื่อคอลัมน์จริงใน DB (image_url)
+        .select(
+          'id,title,price,owner_id,thumbnail_url:image_url,main_image_url:image_url',
+        )
+        .order('created_at', ascending: false); // ← เหลืออันเดียวพอ
+    return rows.map<Product>((r) => Product.fromMap(r)).toList();
   }
 
-  Future<int> create(Product p) async {
-    final row = await supa
+  Future<Product?> getById(String id) async {
+    final row = await _db
         .from('products')
-        .insert(p.toInsert())
-        .select('id')
-        .single();
-    return row['id'] as int;
+        .select(
+          'id,title,description,price,owner_id,thumbnail_url:image_url,main_image_url:image_url',
+        )
+        .eq('id', id)
+        .maybeSingle();
+    return row == null ? null : Product.fromMap(row);
   }
 }
